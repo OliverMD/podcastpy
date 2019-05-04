@@ -26,3 +26,4 @@ elm-stuff
 podcastpy/static/index.html
 build
 run.sh
+podcastpy.log
