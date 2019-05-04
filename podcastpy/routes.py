@@ -1,0 +1,10 @@
+def includeme(config):
+    config.add_static_view('static', 'static', cache_max_age=3600)
+    config.add_route('root', '/')
+    config.add_route('hello', '/test')
+    config.add_route('play', '/play')
+    config.add_route('pause', '/pause')
+    config.add_route('progress', '/progress')
+    config.add_route('volume', '/volume')
+    config.add_route('state', '/state')
+    config.add_route('image', '/image')

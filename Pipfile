@@ -1,0 +1,22 @@
+[[source]]
+url = "https://www.piwheels.org/simple"
+name = "piwheels"
+verify_ssl = true
+
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+feedparser = {version = "*",index = "piwheels"}
+requests = "*"
+python-vlc = "*"
+pyramid = "*"
+setuptools = "*"
+podcastpy = {editable = true,extras = ["testing"],path = "."}
+
+[requires]
+python_version = "3.5"
