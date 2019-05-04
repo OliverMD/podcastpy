@@ -24,3 +24,5 @@ elm-stuff
 .pytest_cache
 .idea
 podcastpy/static/index.html
+build
+run.sh
