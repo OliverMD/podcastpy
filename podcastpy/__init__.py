@@ -1,5 +1,3 @@
-import os
-
 from pyramid.config import Configurator
 from pyramid.events import NewRequest
 
@@ -27,6 +25,4 @@ def main(global_config, **settings):
         config.add_subscriber(add_cors_headers_response_callback, NewRequest)
         config.scan()
 
-    res = os.popen('amixer -c 0 sset PCM playback {}%'.format(int(40))).read()
-    print(res)
     return config.make_wsgi_app()

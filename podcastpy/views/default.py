@@ -77,6 +77,12 @@ class Player(object):
     def get_time(self):
         return int(self._vlc_player.get_time() / 1000)
 
+    def get_volume(self):
+        return int(self._vlc_player.audio_get_volume())
+
+    def set_volume(self, vol):
+        return self._vlc_player.audio_set_volume(vol)
+
 
 current_player = Player()
 
@@ -84,18 +90,11 @@ current_player = Player()
 def change_volume(new_volume):
     if new_volume < 0 or new_volume > 100:
         raise ValueError("Volume must >= 0 and <= 100")
-    res = os.popen('amixer -c 0 sset PCM playback {}%'.format(int(new_volume))).read()
-    print(res)
-
-
-def get_volume():
-    res = os.popen('amixer -c 0 sget PCM playback | tail -1 | tr -d []% | awk \'{print $4}\'', 'r', 1)
-    return int(res.read().strip('\n'))
+    current_player.set_volume(new_volume)
 
 
 def download_file(addr):
     r = requests.get(addr)
-    print(r.is_redirect)
     with open("episode.mp3", "wb") as fh:
         fh.write(bytes(r.content))
 
@@ -121,15 +120,13 @@ def play_handler(request):
 
 @view_config(route_name='volume', request_method='GET')
 def get_current_volume_handler(request):
-    vol = get_volume()
-    print(vol)
+    vol = current_player.get_volume()
     return Response(str(vol))
 
 
 @view_config(route_name='volume', request_method='POST')
 def change_volume_handler(request):
     new_vol = int(request.GET.get('vol'))
-    print(new_vol)
     change_volume(new_vol)
     return Response('Volume changed')
 
