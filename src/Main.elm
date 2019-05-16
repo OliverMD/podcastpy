@@ -81,6 +81,19 @@ stateDecoder =
         (field "paused" bool)
 
 
+nextPlayerState : PodcastState -> PodcastState
+nextPlayerState playerState =
+    case playerState of
+        Playing ->
+            Paused
+
+        Paused ->
+            Playing
+
+        Ready ->
+            Playing
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -116,10 +129,21 @@ update msg model =
             )
 
         MicroTick _ ->
-            ( { model | elapsedTimeMs = model.elapsedTimeMs + microTickLenMs }, Cmd.none )
+            ( { model
+                | elapsedTimeMs =
+                    model.elapsedTimeMs
+                        + (if model.playerState == Playing then
+                            microTickLenMs
+
+                           else
+                            0
+                          )
+              }
+            , Cmd.none
+            )
 
         PlayPodcast ->
-            ( model
+            ( { model | playerState = nextPlayerState model.playerState }
             , Http.get
                 { url =
                     urlRoot
@@ -303,7 +327,7 @@ getElapsedTime : Model -> String
 getElapsedTime model =
     let
         actualElapsedSeconds =
-            if model.playerState == Playing then
+            if model.playerState == Playing || model.playerState == Paused then
                 model.elapsedTimeMs |> toFloat |> floatFlip (/) 1000 |> round
 
             else
