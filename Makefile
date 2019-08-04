@@ -1,16 +1,16 @@
 
 .PHONY: clean build
 
-build: src/Main.elm
+build: ui/src/Main.elm
 	mkdir -p build/podcastpy
-	cp -r podcastpy/* build/podcastpy/
-	cp production.ini build/
-	cp setup.py build/
-	cp README.txt build/
-	cp MANIFEST.in build/
-	cp CHANGES.txt build/
-	elm make src/Main.elm --optimize --output build/podcastpy/static/index.html
-	pipenv lock -r > build/requirements.txt
+	cp -r service/podcastpy/* build/podcastpy/
+	cp service/production.ini build/
+	cp service/setup.py build/
+	cp service/README.txt build/
+	cp service/MANIFEST.in build/
+	cp service/CHANGES.txt build/
+	cd service && pipenv lock -r > ../build/requirements.txt
+	cd ui && npm run prod --nodebug
 
 clean:
 	rm -rf build

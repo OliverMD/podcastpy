@@ -27,3 +27,5 @@ podcastpy/static/index.html
 build
 run.sh
 podcastpy.log
+ui/node_modules
+ui/package-lock.json

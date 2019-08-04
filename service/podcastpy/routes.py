@@ -8,3 +8,4 @@ def includeme(config):
     config.add_route('volume', '/volume')
     config.add_route('state', '/state')
     config.add_route('image', '/image')
+    config.add_route('alarm', '/alarm')

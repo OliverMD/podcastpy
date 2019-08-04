@@ -17,6 +17,9 @@ python-vlc = "*"
 pyramid = "*"
 setuptools = "*"
 podcastpy = {editable = true,extras = ["testing"],path = "."}
+sortedcontainers = "*"
+mock = "*"
+freezegun = "*"
 
 [requires]
 python_version = "3.5"
