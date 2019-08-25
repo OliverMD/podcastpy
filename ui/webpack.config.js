@@ -163,8 +163,7 @@ if (MODE === "production") {
                     test: /\.css$/,
                     exclude: [/elm-stuff/, /node_modules/],
                     loaders: [
-                        MiniCssExtractPlugin.loader,
-                        "css-loader?url=false"
+                        "sass-loader"
                     ]
                 },
                 {
