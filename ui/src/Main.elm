@@ -1,6 +1,8 @@
 module Main exposing (Model)
 
 import Browser
+import Browser.Dom
+import Browser.Events
 import Debounce
 import Duration
 import Element exposing (Color, Element, html, modular, rgba255)
@@ -10,22 +12,19 @@ import Element.Font as Font
 import Element.Input as Input exposing (Thumb, thumb)
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as SolidIcon
-import Html exposing (Html, button, div, text)
+import Html exposing (Html)
 import Html.Events.Extra.Touch as Touch
 import Http
-import Json.Decode exposing (Decoder, bool, field, float, int, map2, map3, map4)
+import Json.Decode exposing (Decoder, bool, field, float, int, map2, map4)
 import Json.Encode
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Task
 import Time exposing (Posix)
 
 
 urlRoot =
     ""
-
-
-
---    "http://localhost:8080"
 
 
 microTickLenMs =
@@ -52,8 +51,8 @@ type alias Model =
     , imageUrl : Maybe String
     , page : Page
     , alarmPos : Float
-    , circleDrag : CircleDrag
     , debounce : Debounce.Debounce Float
+    , viewSize : ( Int, Int )
     }
 
 
@@ -83,16 +82,10 @@ type Msg
     | GotImageUrl (Result Http.Error String)
     | PlayPage
     | AlarmPage
-    | StartAt ( Float, Float )
     | MoveAt ( Float, Float )
-    | EndAt ( Float, Float )
     | GotAlarm (Result Http.Error Alarm)
     | DebounceMsg Debounce.Msg
-
-
-type CircleDrag
-    = InActive
-    | InProgress ( Float, Float )
+    | ViewChanged ( Int, Int )
 
 
 debounceConfig : Debounce.Config Msg
@@ -104,7 +97,17 @@ debounceConfig =
 
 initialModel : () -> ( Model, Cmd Msg )
 initialModel _ =
-    ( { volume = 0, elapsedTimeMs = 0, progress = 0.0, playerState = Ready, length = 0, imageUrl = Nothing, page = Alarms, alarmPos = 0, circleDrag = InActive, debounce = Debounce.init }
+    ( { volume = 0
+      , elapsedTimeMs = 0
+      , progress = 0.0
+      , playerState = Ready
+      , length = 0
+      , imageUrl = Nothing
+      , page = Alarms
+      , alarmPos = 0
+      , debounce = Debounce.init
+      , viewSize = ( 0, 0 )
+      }
     , Cmd.batch
         [ Http.get
             { url = urlRoot ++ "/volume"
@@ -112,6 +115,7 @@ initialModel _ =
             }
         , Http.get { url = urlRoot ++ "/image", expect = Http.expectString GotImageUrl }
         , Http.get { url = urlRoot ++ "/alarm", expect = Http.expectJson GotAlarm alarmDecoder }
+        , Task.perform (\v -> ViewChanged ( round v.viewport.width, round v.viewport.height )) Browser.Dom.getViewport
         ]
     )
 
@@ -245,21 +249,15 @@ update msg model =
         AlarmPage ->
             ( { model | page = Alarms }, Cmd.none )
 
-        StartAt ( x, y ) ->
-            ( { model | circleDrag = InProgress ( x, y ) }, Cmd.none )
-
         MoveAt ( x, y ) ->
             let
                 alarmPos =
-                    updateCircleDrag model.circleDrag ( x, y ) model.alarmPos
+                    updateCircleDrag model.viewSize ( x, y ) model.alarmPos
 
                 ( debounce, cmd ) =
                     Debounce.push debounceConfig alarmPos model.debounce
             in
-            ( { model | circleDrag = InProgress ( x, y ), alarmPos = alarmPos, debounce = debounce }, cmd )
-
-        EndAt ( x, y ) ->
-            ( { model | circleDrag = InActive }, Cmd.none )
+            ( { model | alarmPos = alarmPos, debounce = debounce }, cmd )
 
         GotAlarm result ->
             case result of
@@ -279,6 +277,9 @@ update msg model =
                         model.debounce
             in
             ( { model | debounce = debounce }, cmd )
+
+        ViewChanged ( w, h ) ->
+            ( { model | viewSize = ( w, h ) }, Cmd.none )
 
 
 save : Float -> Cmd Msg
@@ -314,29 +315,73 @@ alarmToTracker alarm =
     ((alarm.hour / 24) * 200) + ((1 / 24) * (alarm.minute / 60) * 200)
 
 
-updateCircleDrag : CircleDrag -> ( Float, Float ) -> Float -> Float
-updateCircleDrag circleDrag ( newX, newY ) existing =
-    case circleDrag of
-        InProgress ( oldX, oldY ) ->
-            let
-                normalAngle =
-                    existing / 100 * 2 * pi
 
-                xDiff =
-                    (newX - oldX) / 9
+-- This assumes that the svg element is at the top of the page to get the location of the centre with respect to the
+-- page coordinates.
 
-                yDiff =
-                    (newY - oldY) / 9
-            in
-            let
-                change =
-                    (cos normalAngle * xDiff) + (sin normalAngle * yDiff)
-            in
-            --            (String.fromFloat xDiff ++ " :: " ++ String.fromFloat yDiff ++ " :: " ++ " :: " ++ String.fromFloat normalAngle ++ " :: " ++ String.fromFloat change)
-            Basics.min (Basics.max 0 (existing + change)) 200
 
-        InActive ->
-            existing
+updateCircleDrag : ( Int, Int ) -> ( Float, Float ) -> Float -> Float
+updateCircleDrag ( viewWidth, _ ) ( newX, newY ) existing =
+    let
+        centreInPage =
+            ( ((toFloat viewWidth - 80) / 2) + 40, ((toFloat viewWidth - 80) / 2) + 50 )
+    in
+    let
+        horizDiff =
+            abs (Tuple.first centreInPage - newX)
+
+        vertDiff =
+            abs (Tuple.second centreInPage - newY)
+
+        rightHalf =
+            newX > Tuple.first centreInPage
+
+        bottomHalf =
+            newY > Tuple.second centreInPage
+    in
+    let
+        offset =
+            case ( rightHalf, bottomHalf ) of
+                ( True, False ) ->
+                    if existing >= 50 && existing <= 175 then
+                        100
+
+                    else
+                        0
+
+                ( True, True ) ->
+                    if existing >= 75 then
+                        100
+
+                    else
+                        0
+
+                ( False, True ) ->
+                    if existing >= 100 then
+                        100
+
+                    else
+                        0
+
+                ( False, False ) ->
+                    if existing >= 150 || existing <= 25 then
+                        100
+
+                    else
+                        0
+    in
+    case ( rightHalf, bottomHalf ) of
+        ( True, False ) ->
+            offset + ((abs <| atan (horizDiff / vertDiff)) / (pi / 2)) * 25
+
+        ( True, True ) ->
+            offset + 25 + (((pi / 2) - atan (horizDiff / vertDiff)) / (pi / 2)) * 25
+
+        ( False, True ) ->
+            offset + 50 + ((abs <| atan (horizDiff / vertDiff)) / (pi / 2)) * 25
+
+        ( False, False ) ->
+            offset + 75 + (((pi / 2) - atan (horizDiff / vertDiff)) / (pi / 2)) * 25
 
 
 
@@ -414,9 +459,7 @@ circleTracker loc =
         [ cx <| String.fromFloat <| 50 + 46 * (cos <| ((loc + 75) / 100) * 2 * pi)
         , cy <| String.fromFloat <| 50 + 46 * (sin <| ((loc + 75) / 100) * 2 * pi)
         , r "4%"
-        , Touch.onStart (StartAt << touchCoordinates)
         , Touch.onMove (MoveAt << touchCoordinates)
-        , Touch.onEnd (EndAt << touchCoordinates)
         ]
         []
 
@@ -642,6 +685,11 @@ progressBar model =
         }
 
 
+onResize : Int -> Int -> Msg
+onResize width height =
+    ViewChanged ( width, height )
+
+
 
 -- PROGRAM --
 
@@ -651,6 +699,7 @@ subscriptions model =
     Sub.batch
         [ Time.every microTickLenMs MicroTick -- No HTTP calls --
         , Time.every 2000 Tick
+        , Browser.Events.onResize onResize
         ]
 
 
