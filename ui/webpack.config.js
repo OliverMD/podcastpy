@@ -116,8 +116,8 @@ if (MODE === "development") {
             // feel free to delete this section if you don't need anything like this
             before(app) {
                 // on port 3000
-                app.get("/test", function(req, res) {
-                    res.json({ result: "OK" });
+                app.get("/image", function(req, res) {
+                    res.send("https://content.production.cdn.art19.com/images/a1/f3/3c/b9/a1f33cb9-ccc0-420f-8289-8cffb74a9dbd/2d47a608654d8b318f6e2f9cb7b8e39031011646a4614221dd954c5f155a384e98ea95e00aeeacfd4b35ea7528cb26a35ad2ec462ff06022b4f0cc2b8ff7f9ec.jpeg");
                 });
             }
         }

@@ -395,7 +395,8 @@ scaled =
 
 view : Model -> Html Msg
 view model =
-    Element.layout []
+    Element.layoutWith { options = [ Element.focusStyle { borderColor = Nothing, backgroundColor = Nothing, shadow = Nothing } ] }
+        []
         (Element.column [ Element.height Element.fill, Element.width Element.fill ]
             [ Element.column
                 [ Element.width Element.fill, Element.height Element.fill, Element.paddingXY 40 50 ]
