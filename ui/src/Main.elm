@@ -5,12 +5,13 @@ import Browser.Dom
 import Browser.Events
 import Debounce
 import Duration
-import Element exposing (Color, Element, html, modular, rgba255)
+import Element exposing (Color, Element, html, modular, rgb255, rgba255)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input exposing (Thumb, thumb)
 import FontAwesome.Icon as Icon
+import FontAwesome.Regular as Regular
 import FontAwesome.Solid as SolidIcon
 import Html exposing (Html)
 import Html.Events.Extra.Touch as Touch
@@ -29,6 +30,26 @@ urlRoot =
 
 microTickLenMs =
     500
+
+
+colorA =
+    rgba255 217 149 15 1
+
+
+colorB =
+    rgba255 255 239 207 1
+
+
+colorC =
+    rgba255 255 204 102 1
+
+
+colorD =
+    rgba255 217 232 255 1
+
+
+colorE =
+    rgba255 12 43 89 1
 
 
 type PodcastState
@@ -412,18 +433,18 @@ getNavBar model =
         [ Element.centerX
         , Element.alignBottom
         , Element.width Element.fill
-        , Background.color (rgba255 122 126 128 0.3)
-        , Element.paddingXY 0 (scaled 2)
-        , Border.rounded 7
+        , Background.color colorD
+        , Element.paddingEach { top = scaled 2, right = 0, bottom = scaled 4, left = 0 }
+        , Border.rounded 0
         ]
         (Element.row [ Element.centerX, Element.spacingXY 150 (scaled 1) ]
-            [ Input.button []
+            [ Input.button [ Font.color colorE ]
                 { label =
                     Element.el [ Element.width <| Element.px <| scaled 7 ] <|
                         Element.html (Html.div [] [ Icon.view SolidIcon.play ])
                 , onPress = Just PlayPage
                 }
-            , Input.button []
+            , Input.button [ Font.color colorE ]
                 { label =
                     Element.el [ Element.width <| Element.px <| scaled 7 ] <|
                         Element.html (Html.div [] [ Icon.view SolidIcon.bell ])
@@ -461,6 +482,7 @@ circleTracker loc =
         , cy <| String.fromFloat <| 50 + 46 * (sin <| ((loc + 75) / 100) * 2 * pi)
         , r "4%"
         , Touch.onMove (MoveAt << touchCoordinates)
+        , fill "#FFCC66"
         ]
         []
 
@@ -488,14 +510,20 @@ alarmsPageView model =
                 , cy "50%"
                 , r "46%"
                 , fill "none"
-                , stroke "grey"
                 , strokeWidth "8%"
+                , stroke "#D9E8FF"
                 ]
                 []
             , circleTracker model.alarmPos
             ]
         )
-    , Element.el [ Element.centerX, Font.size (scaled 12), Element.paddingEach { top = scaled 10, right = 0, bottom = 0, left = 0 } ] (Element.text (getAlarmTime model.alarmPos))
+    , Element.el
+        [ Element.centerX
+        , Font.size (scaled 12)
+        , Element.paddingEach { top = scaled 10, right = 0, bottom = 0, left = 0 }
+        , Font.color colorD
+        ]
+        (Element.text (getAlarmTime model.alarmPos))
     ]
 
 
@@ -520,15 +548,16 @@ playButton model =
             Element.el
                 [ Element.centerX
                 , Element.width <| Element.px <| scaled 10
+                , Font.color colorC
                 ]
             <|
                 Element.html
                     (Html.div []
                         [ if model.playerState == Playing then
-                            Icon.view SolidIcon.pauseCircle
+                            Icon.view Regular.pauseCircle
 
                           else
-                            Icon.view SolidIcon.playCircle
+                            Icon.view Regular.playCircle
                         ]
                     )
         , onPress = Just PlayPodcast
@@ -548,7 +577,7 @@ volumeBar model =
                 [ Element.width Element.fill
                 , Element.height (scaled -1 |> Element.px)
                 , Element.centerY
-                , Background.color (Element.rgb 0.5 0.5 0.5)
+                , Background.color colorB
                 , Border.rounded 10
                 ]
                 Element.none
@@ -560,6 +589,7 @@ volumeBar model =
                 [ Element.centerX
                 , Font.size (scaled 5)
                 , Element.alpha 0.5
+                , Font.color <| colorD
                 ]
                 (model.volume |> String.fromInt |> Element.text)
         , min = 0
@@ -573,7 +603,7 @@ volumeBar model =
                 , Border.rounded 40
                 , Border.width 1
                 , Border.color (Element.rgb 0.5 0.5 0.5)
-                , Background.color (Element.rgb 1 1 1)
+                , Background.color colorC
                 ]
         }
 
@@ -627,7 +657,7 @@ secondsToHoursMins totalSeconds =
 
 floatFlip : (Float -> Float -> Float) -> Float -> (Float -> Float)
 floatFlip function den =
-    \a -> function a den
+    \x -> function x den
 
 
 getElapsedTime : Model -> String
@@ -656,7 +686,7 @@ progressBar model =
                 [ Element.width Element.fill
                 , Element.height (scaled -2 |> Element.px)
                 , Element.centerY
-                , Background.color (Element.rgb 0.5 0.5 0.5)
+                , Background.color colorB
                 , Border.rounded 10
                 ]
                 Element.none
@@ -668,6 +698,7 @@ progressBar model =
                 [ Element.centerX
                 , Font.size (scaled 5)
                 , Element.alpha 0.5
+                , Font.color colorD
                 ]
                 (model |> getElapsedTime |> Element.text)
         , min = 0
@@ -681,7 +712,7 @@ progressBar model =
                 , Border.rounded 40
                 , Border.width 1
                 , Border.color (Element.rgb 0.5 0.5 0.5)
-                , Background.color (Element.rgb 1 1 1)
+                , Background.color colorA
                 ]
         }
 
