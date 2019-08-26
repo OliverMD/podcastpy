@@ -1,10 +1,13 @@
 # Podcastpy
 
-A podcast player for a raspberry pi. Frontend written with Elm, backend in Python 3. I use this along with cron to function as a podcast alarm clock.
+A podcast player for a raspberry pi. Frontend written with Elm, backend in Python 3.
 
-The interface has been designed for use in a phone's web browser.
+The interface has been designed as a PWA for iOS. It has not been tested with Android.
 
-![Example interface](example.jpg)
+![Example interface](example1.jpg)
+
+
+![Example time selector](example2.jpg)
 ## Building
 `make build`: Builds the frontend & copies the backend to `./build` along with a `requirements.txt`
 
@@ -13,5 +16,4 @@ The interface has been designed for use in a phone's web browser.
     * Requires adding another page to the frontend
     * Requires work on the backend
 * Improve deployment process
-* Allow scheduling of alarm rather than relying on Cron
 * Make the frontend reactive so it makes better use of screen space on non-phones
