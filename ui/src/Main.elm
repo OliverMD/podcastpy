@@ -5,7 +5,7 @@ import Browser.Dom
 import Browser.Events
 import Debounce
 import Duration
-import Element exposing (Color, Element, html, modular, rgb255, rgba255)
+import Element exposing (Color, Element, html, modular, rgba255, toRgb)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -33,23 +33,23 @@ microTickLenMs =
 
 
 colorA =
-    rgba255 217 149 15 1
+    rgba255 0 0 0 1
 
 
 colorB =
-    rgba255 255 239 207 1
+    rgba255 20 126 251 1
 
 
 colorC =
-    rgba255 255 204 102 1
+    rgba255 204 204 204 1
 
 
 colorD =
-    rgba255 217 232 255 1
+    rgba255 51 51 51 1
 
 
 colorE =
-    rgba255 12 43 89 1
+    rgba255 102 102 102 1
 
 
 type PodcastState
@@ -170,6 +170,10 @@ nextPlayerState playerState =
             Playing
 
 
+
+-- UPDATE --
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -178,10 +182,10 @@ update msg model =
                 Ok val ->
                     ( { model | volume = Maybe.withDefault 0 (String.toInt val) }, Cmd.none )
 
-                Err error ->
+                Err _ ->
                     ( model, Cmd.none )
 
-        Updated result ->
+        Updated _ ->
             ( model, Http.get { url = urlRoot ++ "/image", expect = Http.expectString GotImageUrl } )
 
         ChangeVolume val ->
@@ -253,7 +257,7 @@ update msg model =
                     , Cmd.none
                     )
 
-                Err error ->
+                Err _ ->
                     ( model, Cmd.none )
 
         GotImageUrl result ->
@@ -285,7 +289,7 @@ update msg model =
                 Ok value ->
                     ( { model | alarmPos = alarmToTracker value }, Cmd.none )
 
-                Err error ->
+                Err _ ->
                     ( model, Cmd.none )
 
         DebounceMsg m ->
@@ -293,7 +297,7 @@ update msg model =
                 ( debounce, cmd ) =
                     Debounce.update
                         debounceConfig
-                        (Debounce.takeLast save)
+                        (Debounce.takeLast saveAlarmTime)
                         m
                         model.debounce
             in
@@ -303,8 +307,8 @@ update msg model =
             ( { model | viewSize = ( w, h ) }, Cmd.none )
 
 
-save : Float -> Cmd Msg
-save val =
+saveAlarmTime : Float -> Cmd Msg
+saveAlarmTime val =
     let
         alarm =
             trackerToAlarm val
@@ -433,18 +437,34 @@ getNavBar model =
         [ Element.centerX
         , Element.alignBottom
         , Element.width Element.fill
-        , Background.color colorD
+        , Background.color colorC
         , Element.paddingEach { top = scaled 2, right = 0, bottom = scaled 4, left = 0 }
         , Border.rounded 0
         ]
         (Element.row [ Element.centerX, Element.spacingXY 150 (scaled 1) ]
-            [ Input.button [ Font.color colorE ]
+            [ Input.button
+                [ Font.color
+                    (if model.page == Player then
+                        colorB
+
+                     else
+                        colorE
+                    )
+                ]
                 { label =
                     Element.el [ Element.width <| Element.px <| scaled 7 ] <|
                         Element.html (Html.div [] [ Icon.view SolidIcon.play ])
                 , onPress = Just PlayPage
                 }
-            , Input.button [ Font.color colorE ]
+            , Input.button
+                [ Font.color
+                    (if model.page == Alarms then
+                        colorB
+
+                     else
+                        colorE
+                    )
+                ]
                 { label =
                     Element.el [ Element.width <| Element.px <| scaled 7 ] <|
                         Element.html (Html.div [] [ Icon.view SolidIcon.bell ])
@@ -482,7 +502,7 @@ circleTracker loc =
         , cy <| String.fromFloat <| 50 + 46 * (sin <| ((loc + 75) / 100) * 2 * pi)
         , r "4%"
         , Touch.onMove (MoveAt << touchCoordinates)
-        , fill "#FFCC66"
+        , fill <| colorToString <| colorD
         ]
         []
 
@@ -499,6 +519,23 @@ getAlarmTime progress =
     secondsToHoursMins <| round ((12 * 60 * 60) * (progress / 100))
 
 
+colorToString : Color -> String
+colorToString color =
+    let
+        c =
+            toRgb color
+    in
+    "rgba("
+        ++ String.fromFloat (c.red * 255)
+        ++ ", "
+        ++ String.fromFloat (c.green * 255)
+        ++ ", "
+        ++ String.fromFloat (c.blue * 255)
+        ++ ", "
+        ++ String.fromFloat c.alpha
+        ++ ")"
+
+
 alarmsPageView : Model -> List (Element Msg)
 alarmsPageView model =
     [ html
@@ -511,7 +548,7 @@ alarmsPageView model =
                 , r "46%"
                 , fill "none"
                 , strokeWidth "8%"
-                , stroke "#D9E8FF"
+                , stroke <| colorToString <| colorC
                 ]
                 []
             , circleTracker model.alarmPos
@@ -521,7 +558,7 @@ alarmsPageView model =
         [ Element.centerX
         , Font.size (scaled 12)
         , Element.paddingEach { top = scaled 10, right = 0, bottom = 0, left = 0 }
-        , Font.color colorD
+        , Font.color colorA
         ]
         (Element.text (getAlarmTime model.alarmPos))
     ]
@@ -548,7 +585,7 @@ playButton model =
             Element.el
                 [ Element.centerX
                 , Element.width <| Element.px <| scaled 10
-                , Font.color colorC
+                , Font.color colorA
                 ]
             <|
                 Element.html
@@ -577,7 +614,7 @@ volumeBar model =
                 [ Element.width Element.fill
                 , Element.height (scaled -1 |> Element.px)
                 , Element.centerY
-                , Background.color colorB
+                , Background.color colorC
                 , Border.rounded 10
                 ]
                 Element.none
@@ -588,8 +625,8 @@ volumeBar model =
             Input.labelAbove
                 [ Element.centerX
                 , Font.size (scaled 5)
-                , Element.alpha 0.5
-                , Font.color <| colorD
+                , Element.alpha 1
+                , Font.color <| colorA
                 ]
                 (model.volume |> String.fromInt |> Element.text)
         , min = 0
@@ -601,9 +638,9 @@ volumeBar model =
                 [ Element.width (Element.px (scaled 5))
                 , Element.height (Element.px (scaled 5))
                 , Border.rounded 40
-                , Border.width 1
+                , Border.width 0
                 , Border.color (Element.rgb 0.5 0.5 0.5)
-                , Background.color colorC
+                , Background.color colorD
                 ]
         }
 
@@ -686,7 +723,7 @@ progressBar model =
                 [ Element.width Element.fill
                 , Element.height (scaled -2 |> Element.px)
                 , Element.centerY
-                , Background.color colorB
+                , Background.color colorC
                 , Border.rounded 10
                 ]
                 Element.none
@@ -697,8 +734,8 @@ progressBar model =
             Input.labelAbove
                 [ Element.centerX
                 , Font.size (scaled 5)
-                , Element.alpha 0.5
-                , Font.color colorD
+                , Element.alpha 1
+                , Font.color colorA
                 ]
                 (model |> getElapsedTime |> Element.text)
         , min = 0
@@ -710,9 +747,9 @@ progressBar model =
                 [ Element.width (Element.px (scaled 4))
                 , Element.height (Element.px (scaled 4))
                 , Border.rounded 40
-                , Border.width 1
+                , Border.width 0
                 , Border.color (Element.rgb 0.5 0.5 0.5)
-                , Background.color colorA
+                , Background.color colorD
                 ]
         }
 
