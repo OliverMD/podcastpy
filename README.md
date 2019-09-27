@@ -4,10 +4,12 @@ A podcast player for a raspberry pi. Frontend written with Elm, backend in Pytho
 
 The interface has been designed as a PWA for iOS. It has not been tested with Android.
 
-![Example interface](example1.jpg)
+<p>
+<img src="example1.jpg" width="30%">
+<img src="example2.jpg" width="30%">
+</p>
 
 
-![Example time selector](example2.jpg)
 ## Building
 `make build`: Builds the frontend & copies the backend to `./build` along with a `requirements.txt`
 
