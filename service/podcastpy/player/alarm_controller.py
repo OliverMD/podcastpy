@@ -2,16 +2,17 @@ import datetime
 import logging
 
 from podcastpy.player.alarm_scheduler import AlarmScheduler, LocalTimezone
+from podcastpy.player.alarm_store import AlarmStore
 from podcastpy.player.episode_manager import EpisodeManager
 from podcastpy.player.player import Player, PlayerState
 
 
-def get_default_alarm_controller():
-    return AlarmController(AlarmScheduler(), EpisodeManager(), Player())
+def get_default_alarm_controller(db):
+    return AlarmController(AlarmScheduler(), EpisodeManager(), Player(), db)
 
 
 class AlarmController(object):
-    def __init__(self, scheduler, manager, player):
+    def __init__(self, scheduler, manager, player, db: AlarmStore):
         self._scheduler = scheduler
         self._manager = manager
         self._player = player
@@ -20,8 +21,7 @@ class AlarmController(object):
         self._log.info("Creating new AlarmController")
 
         default_time = datetime.datetime.combine(datetime.datetime.today(),
-                                                 datetime.time(hour=21, minute=17,
-                                                 tzinfo=LocalTimezone()))
+                                                 db.get_alarm())
 
         self._alarm_vid = self._scheduler.add_alarm(default_time.time(), self.play_episode)
         self._preload_vid = self._scheduler.add_alarm((default_time - datetime.timedelta(seconds=60)).time(), self.download_episode)
@@ -30,7 +30,7 @@ class AlarmController(object):
 
         self._manager.preload_episode()
 
-    def change_alarm_time(self, new_time):
+    def change_alarm_time(self, new_time: datetime.datetime, db: AlarmStore) -> None:
         if self._alarm_vid is None or self._preload_vid is None:
             raise RuntimeError("No alarm set")
 
@@ -40,10 +40,11 @@ class AlarmController(object):
         if self._scheduler.remove_alarm(self._preload_vid) is False:
             raise RuntimeError("Could not find existing preload task")
 
+        db.replace_alarm(new_time.time())
         self._preload_vid = self._scheduler.add_alarm((new_time - datetime.timedelta(seconds=60)).time(), self.download_episode)
         self._alarm_vid = self._scheduler.add_alarm(new_time.time(), self.play_episode)
 
-    def get_next_alarm_time(self):
+    def get_next_alarm_time(self) -> datetime.datetime:
         return self._scheduler.get_alarm_time(self._alarm_vid)
 
     def download_episode(self):

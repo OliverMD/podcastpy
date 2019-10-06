@@ -1,13 +1,21 @@
 import datetime
 import os
 
+from pyramid.events import subscriber
 from pyramid.response import Response, FileResponse
 from pyramid.view import view_config
 
 from podcastpy.player.alarm_controller import get_default_alarm_controller
 from podcastpy.player.alarm_scheduler import LocalTimezone
+from podcastpy.player.alarm_store import DbCreated
 
-alarm_controller = get_default_alarm_controller()
+alarm_controller = None
+
+
+@subscriber(DbCreated)
+def initialize(event):
+    global alarm_controller
+    alarm_controller = get_default_alarm_controller(event.db)
 
 
 @view_config(route_name='state', request_method='GET', renderer='json')
@@ -81,7 +89,7 @@ def change_alarm_time(request):
         datetime.time(hour=request.json['hour'],
                       minute=request.json['minute'],
                       tzinfo=LocalTimezone()))
-    alarm_controller.change_alarm_time(new_time)
+    alarm_controller.change_alarm_time(new_time, request.db)
     return Response('Success')
 
 
