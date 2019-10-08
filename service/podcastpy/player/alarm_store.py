@@ -16,7 +16,8 @@ def create_db(event) -> None:
     db = sqlite3.connect(db_path)
     db.execute('''create table if not exists alarms (
         id integer primary key autoincrement,
-        time text
+        time text,
+        enabled integer
     );''')
     db.commit()
     event.app.registry.notify(DbCreated(AlarmStore(db)))
@@ -38,20 +39,20 @@ class AlarmStore(object):
         self._db = db
         self._default_time = datetime.time(hour=9, minute=30, tzinfo=LocalTimezone())
 
-    def replace_alarm(self, time) -> None:
+    def replace_alarm(self, time: datetime.time, enabled: bool) -> None:
         self._db.execute('delete from alarms where true;')
-        self._db.execute('insert into alarms (time) values (?);', (time.isoformat(),))
+        self._db.execute('insert into alarms (time, enabled) values (?, ?);', (time.isoformat(), enabled))
         self._db.commit()
 
-    def get_alarm(self) -> datetime.time:
+    def get_alarm(self) -> (datetime.time, bool):
         c = self._db.cursor()
-        c.execute('select time from alarms limit 1;')
+        c.execute('select time, enabled from alarms limit 1;')
         res = c.fetchone()
         if res is None:
-            self.replace_alarm(self._default_time)
-            return self._default_time
+            self.replace_alarm(self._default_time, False)
+            return self._default_time, False
 
-        return datetime.time.fromisoformat(res[0])
+        return datetime.time.fromisoformat(res[0]), res[1] > 0
 
     def close(self) -> None:
         self._db.close()

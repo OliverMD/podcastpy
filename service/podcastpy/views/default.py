@@ -78,8 +78,8 @@ def get_image_url_handler(request):
 
 @view_config(route_name='alarm', request_method='GET', renderer='json')
 def get_next_alarm_time(request):
-    next_time = alarm_controller.get_next_alarm_time()
-    return {'hour': next_time.hour, 'minute': next_time.minute}
+    next_time, enabled = alarm_controller.get_next_alarm_time()
+    return {'hour': next_time.hour, 'minute': next_time.minute, 'enabled': enabled}
 
 
 @view_config(route_name='alarm', request_method='POST')
@@ -89,7 +89,7 @@ def change_alarm_time(request):
         datetime.time(hour=request.json['hour'],
                       minute=request.json['minute'],
                       tzinfo=LocalTimezone()))
-    alarm_controller.change_alarm_time(new_time, request.db)
+    alarm_controller.change_alarm_time(new_time, request.json['enabled'], request.db)
     return Response('Success')
 
 

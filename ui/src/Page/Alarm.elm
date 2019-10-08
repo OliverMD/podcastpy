@@ -6,11 +6,15 @@ import Colours exposing (colorA, colorC, colorD, colorToString)
 import Debounce
 import Duration
 import Element exposing (Element, html)
+import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input exposing (thumb)
 import Html.Events.Extra.Touch as Touch
 import Http
-import Json.Decode exposing (Decoder, field, float, map2)
+import Json.Decode exposing (Decoder, bool, field, float, map2, map3)
 import Json.Encode
+import List exposing (singleton)
+import Maybe exposing (map, withDefault)
 import Svg exposing (Svg, circle, svg)
 import Svg.Attributes exposing (cx, cy, fill, r, stroke, strokeWidth, viewBox)
 import Task
@@ -29,6 +33,7 @@ type alias AlarmTime =
 
 type alias Model =
     { alarmPos : Float
+    , alarmEnabled : Bool
 
     -- UI Component state
     , debounce : Debounce.Debounce Float
@@ -39,6 +44,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( { alarmPos = 0
+      , alarmEnabled = False
       , debounce = Debounce.init
       , viewSize = ( 0, 0 )
       }
@@ -62,10 +68,11 @@ debounceConfig =
 
 type Msg
     = MoveAt ( Float, Float )
-    | GotAlarm (Result Http.Error AlarmTime)
+    | GotAlarm (Result Http.Error ( AlarmTime, Bool ))
     | DebounceMsg Debounce.Msg
     | ViewChanged ( Int, Int )
     | Updated (Result Http.Error ())
+    | ToggleChanged Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -83,8 +90,8 @@ update msg model =
 
         GotAlarm result ->
             case result of
-                Ok value ->
-                    ( { model | alarmPos = alarmToTracker value }, Cmd.none )
+                Ok ( alarmTime, alarmEnabled ) ->
+                    ( { model | alarmPos = alarmToTracker alarmTime, alarmEnabled = alarmEnabled }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -94,7 +101,7 @@ update msg model =
                 ( debounce, cmd ) =
                     Debounce.update
                         debounceConfig
-                        (Debounce.takeLast saveAlarmTime)
+                        (Debounce.takeLast (saveAlarmTime model.alarmEnabled))
                         m
                         model.debounce
             in
@@ -105,6 +112,13 @@ update msg model =
 
         Updated _ ->
             ( model, Cmd.none )
+
+        ToggleChanged enabled ->
+            ( { model
+                | alarmEnabled = enabled
+              }
+            , saveAlarmTime enabled model.alarmPos
+            )
 
 
 trackerToAlarm : Float -> AlarmTime
@@ -209,24 +223,32 @@ onResize width height =
 -- HTTP
 
 
-saveAlarmTime : Float -> Cmd Msg
-saveAlarmTime val =
+saveAlarmTime : Bool -> Float -> Cmd Msg
+saveAlarmTime isEnabled val =
     let
         alarm =
             trackerToAlarm val
     in
     Http.post
         { url = urlRoot ++ "/alarm"
-        , body = Http.jsonBody (Json.Encode.object [ ( "hour", Json.Encode.float alarm.hour ), ( "minute", Json.Encode.float alarm.minute ) ])
+        , body =
+            Http.jsonBody
+                (Json.Encode.object
+                    [ ( "hour", Json.Encode.float alarm.hour )
+                    , ( "minute", Json.Encode.float alarm.minute )
+                    , ( "enabled", Json.Encode.bool isEnabled )
+                    ]
+                )
         , expect = Http.expectWhatever Updated
         }
 
 
-alarmDecoder : Decoder AlarmTime
+alarmDecoder : Decoder ( AlarmTime, Bool )
 alarmDecoder =
-    map2 AlarmTime
+    map3 (\a b c -> ( AlarmTime a b, c ))
         (field "hour" float)
         (field "minute" float)
+        (field "enabled" bool)
 
 
 
@@ -239,7 +261,7 @@ view model =
         (svg
             [ viewBox "0 0 100 100"
             ]
-            [ circle
+            ([ circle
                 [ cx "50%"
                 , cy "50%"
                 , r "46%"
@@ -248,16 +270,48 @@ view model =
                 , stroke <| colorToString <| colorC
                 ]
                 []
-            , circleTracker model.alarmPos
-            ]
+             ]
+                ++ (if model.alarmEnabled then
+                        (circleTracker >> singleton) model.alarmPos
+
+                    else
+                        []
+                   )
+            )
         )
     , Element.el
         [ Element.centerX
         , Font.size (scaled 12)
-        , Element.paddingEach { top = scaled 10, right = 0, bottom = 0, left = 0 }
+        , Element.paddingEach { top = scaled 8, right = 0, bottom = scaled 5, left = 0 }
         , Font.color colorA
         ]
-        (Element.text (getAlarmTime model.alarmPos))
+        (Element.text <|
+            if model.alarmEnabled then
+                getAlarmTime model.alarmPos
+
+            else
+                "--:--"
+        )
+    , Element.row
+        [ Element.width Element.fill
+        , Element.paddingEach { top = scaled 8, right = 0, bottom = 0, left = 0 }
+        , Border.widthEach { top = 1, right = 0, bottom = 0, left = 0 }
+        , Border.color colorC
+        ]
+        [ Element.el
+            [ Element.alignLeft
+            , Font.light
+            ]
+            (Element.text "Enable alarm")
+        , Element.el [ Element.alignRight ]
+            (Input.checkbox [ Element.scale 2.3 ]
+                { onChange = ToggleChanged
+                , icon = Input.defaultCheckbox
+                , checked = model.alarmEnabled
+                , label = Input.labelHidden ""
+                }
+            )
+        ]
     ]
 
 
